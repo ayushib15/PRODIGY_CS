@@ -1,0 +1,75 @@
+from PIL import Image
+import numpy as np
+import hashlib
+import getpass
+
+def load_image(image_path):
+    """Load an image from a file path."""
+    return Image.open(image_path)
+
+def save_image(image, output_path):
+    """Save an image to a file path."""
+    image.save(output_path)
+
+def generate_key(password):
+    """Generate a key from the password using SHA-256."""
+    hash_object = hashlib.sha256(password.encode())
+    return int(hash_object.hexdigest(), 16) % (2**32)  # Use only 32 bits of the hash for the key
+
+def encrypt_image(image, key):
+    """Encrypt an image using a key."""
+    np.random.seed(key)
+    pixels = np.array(image)
+    flat_pixels = pixels.flatten()
+    
+    # Create a permutation of pixel indices based on the key
+    perm = np.random.permutation(flat_pixels.size)
+    
+    # Apply the permutation to shuffle pixels
+    encrypted_pixels = flat_pixels[perm].reshape(pixels.shape)
+    
+    # Apply a complex transformation to each pixel value
+    encrypted_pixels = (encrypted_pixels + key) % 256
+    
+    return Image.fromarray(encrypted_pixels.astype(np.uint8))
+
+def decrypt_image(image, key):
+    """Decrypt an image using a key."""
+    np.random.seed(key)
+    pixels = np.array(image)
+    flat_pixels = pixels.flatten()
+    
+    # Create a permutation of pixel indices based on the key
+    perm = np.random.permutation(flat_pixels.size)
+    
+    # Apply the inverse permutation to unshuffle pixels
+    inv_perm = np.argsort(perm)
+    decrypted_pixels = flat_pixels[inv_perm].reshape(pixels.shape)
+    
+    # Apply the inverse transformation to each pixel value
+    decrypted_pixels = (decrypted_pixels - key) % 256
+    
+    return Image.fromarray(decrypted_pixels.astype(np.uint8))
+
+def main():
+    input_path = input("Enter the path to the input image: ").strip('\"')
+    encrypted_path = input("Enter the path to save the encrypted image: ").strip('\"')
+    decrypted_path = input("Enter the path to save the decrypted image: ").strip('\"')
+    password = getpass.getpass("Enter the password for encryption/decryption: ")
+    key = generate_key(password)
+
+    # Load the original image
+    original_image = load_image(input_path)
+    
+    # Encrypt the image
+    encrypted_image = encrypt_image(original_image, key)
+    save_image(encrypted_image, encrypted_path)
+    print(f"Encrypted image saved to {encrypted_path}")
+    
+    # Decrypt the image
+    decrypted_image = decrypt_image(encrypted_image, key)
+    save_image(decrypted_image, decrypted_path)
+    print(f"Decrypted image saved to {decrypted_path}")
+
+if __name__ == "__main__":
+    main()
